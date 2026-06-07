@@ -3,8 +3,8 @@
 [![Latest release](https://img.shields.io/github/v/release/volsch/md24de-mcp?label=latest)](https://github.com/volsch/md24de-mcp/releases/latest)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=volsch_md24de-mcp)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=volsch_md24de-mcp)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=alert_status)](https://sonarcloud.io/summary/overall?id=volsch_md24de-mcp)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=coverage)](https://sonarcloud.io/summary/overall?id=volsch_md24de-mcp)
 
 Unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the
 [messdienst24.de](https://messdienst24.de) utility-consumption portal.
