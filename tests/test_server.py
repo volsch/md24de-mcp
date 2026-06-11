@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import mcp.types as mcp_types
 import pytest
 from md24de import (
     AvailableMonth,
@@ -18,6 +21,9 @@ from pytest_mock import MockerFixture
 import md24de_mcp.server as server_module
 from md24de_mcp._config import Config
 from md24de_mcp.server import (
+    _apply_log_level,
+    _handle_completion,
+    _handle_set_logging_level,
     _serialize_meter,
     _serialize_object_info,
     _serialize_reading,
@@ -254,3 +260,84 @@ def test_save_pdf_also_caches_month(
     # Month should now be cached — get_last_available_month must not hit the portal again
     get_last_available_month()
     mock_client.get_last_available_month.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _apply_log_level
+# ---------------------------------------------------------------------------
+
+
+def test_apply_log_level_debug() -> None:
+    _apply_log_level(logging.DEBUG)
+    assert logging.getLogger("md24de_mcp").level == logging.DEBUG
+    assert logging.getLogger("md24de").level == logging.DEBUG
+    assert logging.getLogger("httpx").level == logging.DEBUG
+
+
+def test_apply_log_level_info_suppresses_httpx() -> None:
+    _apply_log_level(logging.INFO)
+    assert logging.getLogger("md24de_mcp").level == logging.INFO
+    assert logging.getLogger("md24de").level == logging.INFO
+    assert logging.getLogger("httpx").level == logging.WARNING
+
+
+def test_apply_log_level_warning() -> None:
+    _apply_log_level(logging.WARNING)
+    assert logging.getLogger("md24de_mcp").level == logging.WARNING
+    assert logging.getLogger("md24de").level == logging.WARNING
+    assert logging.getLogger("httpx").level == logging.WARNING
+
+
+# ---------------------------------------------------------------------------
+# logging/setLevel handler
+# ---------------------------------------------------------------------------
+
+
+def test_handle_set_logging_level_maps_debug(mocker: MockerFixture) -> None:
+    mock_apply = mocker.patch("md24de_mcp.server._apply_log_level")
+    asyncio.run(_handle_set_logging_level("debug"))
+    mock_apply.assert_called_once_with(logging.DEBUG)
+
+
+def test_handle_set_logging_level_maps_notice_to_info(mocker: MockerFixture) -> None:
+    mock_apply = mocker.patch("md24de_mcp.server._apply_log_level")
+    asyncio.run(_handle_set_logging_level("notice"))
+    mock_apply.assert_called_once_with(logging.INFO)
+
+
+def test_handle_set_logging_level_maps_warning(mocker: MockerFixture) -> None:
+    mock_apply = mocker.patch("md24de_mcp.server._apply_log_level")
+    asyncio.run(_handle_set_logging_level("warning"))
+    mock_apply.assert_called_once_with(logging.WARNING)
+
+
+def test_handle_set_logging_level_maps_error(mocker: MockerFixture) -> None:
+    mock_apply = mocker.patch("md24de_mcp.server._apply_log_level")
+    asyncio.run(_handle_set_logging_level("error"))
+    mock_apply.assert_called_once_with(logging.ERROR)
+
+
+def test_handle_set_logging_level_maps_alert_to_critical(mocker: MockerFixture) -> None:
+    mock_apply = mocker.patch("md24de_mcp.server._apply_log_level")
+    asyncio.run(_handle_set_logging_level("alert"))
+    mock_apply.assert_called_once_with(logging.CRITICAL)
+
+
+# ---------------------------------------------------------------------------
+# completion/complete handler
+# ---------------------------------------------------------------------------
+
+
+def test_handle_completion_returns_none_for_prompt_ref() -> None:
+    ref = mcp_types.PromptReference(type="ref/prompt", name="test")
+    argument = mcp_types.CompletionArgument(name="arg", value="val")
+    result = asyncio.run(_handle_completion(ref, argument, None))
+    assert result is None
+
+
+def test_handle_completion_returns_none_for_resource_ref() -> None:
+    ref = mcp_types.ResourceTemplateReference(type="ref/resource", uri="md24de://test")
+    argument = mcp_types.CompletionArgument(name="arg", value="val")
+    context = mcp_types.CompletionContext(arguments={"key": "value"})
+    result = asyncio.run(_handle_completion(ref, argument, context))
+    assert result is None

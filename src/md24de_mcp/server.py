@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
 from md24de import (
     AvailableMonth,
@@ -18,6 +19,20 @@ from ._cache import Cache
 from ._config import Config
 
 _log = logging.getLogger(__name__)
+
+# Maps MCP LoggingLevel strings to Python logging level integers.
+# "notice", "alert", "emergency" have no direct Python equivalent and are
+# mapped to the nearest standard level.
+_MCP_TO_PY_LOG_LEVEL: dict[mcp_types.LoggingLevel, int] = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "notice": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "alert": logging.CRITICAL,
+    "emergency": logging.CRITICAL,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +86,19 @@ def _make_client() -> Md24deClient:
     )
 
 
+def _apply_log_level(py_level: int) -> None:
+    """Apply *py_level* to the ``md24de_mcp``, ``md24de``, and ``httpx`` loggers.
+
+    Mirrors the level-application logic in :func:`md24de_mcp.main` so that a
+    ``logging/setLevel`` request received at runtime has the same effect as
+    starting the server with the corresponding ``LOG_LEVEL`` env var.
+    """
+    logging.getLogger("md24de_mcp").setLevel(py_level)
+    logging.getLogger("md24de").setLevel(py_level)
+    httpx_level = logging.WARNING if py_level > logging.DEBUG else py_level
+    logging.getLogger("httpx").setLevel(httpx_level)
+
+
 def _serialize_object_info(info: ObjectInfo) -> dict[str, str]:
     return {"object_number": info.object_number, "address": info.address}
 
@@ -107,6 +135,37 @@ def _serialize_report(month: AvailableMonth, report: ConsumptionReport) -> dict[
         "heating": _serialize_meter(report.heating),
         "hot_water": _serialize_meter(report.hot_water),
     }
+
+
+# ---------------------------------------------------------------------------
+# MCP protocol handlers
+# ---------------------------------------------------------------------------
+# ping, resources/list, resources/read → handled automatically by FastMCP.
+# Unknown methods → low-level server returns -32601 automatically.
+# logging/setLevel and completion/complete require explicit registration below.
+
+
+async def _handle_set_logging_level(level: mcp_types.LoggingLevel) -> None:
+    py_level = _MCP_TO_PY_LOG_LEVEL.get(level, logging.WARNING)
+    _log.debug("logging/setLevel: %s -> Python level %d", level, py_level)
+    _apply_log_level(py_level)
+
+
+async def _handle_completion(
+    ref: mcp_types.PromptReference | mcp_types.ResourceTemplateReference,
+    argument: mcp_types.CompletionArgument,
+    context: mcp_types.CompletionContext | None,
+) -> mcp_types.Completion | None:
+    # This server exposes no prompts or resource templates, so there are
+    # no completions to provide.  Returning None causes the framework to
+    # respond with an empty completion list.
+    return None
+
+
+# Register handlers with the MCP framework.  Explicit call form (vs. @decorator
+# syntax) keeps pyright happy because the functions are referenced as arguments.
+mcp._mcp_server.set_logging_level()(_handle_set_logging_level)  # type: ignore[reportPrivateUsage]
+mcp.completion()(_handle_completion)
 
 
 # ---------------------------------------------------------------------------
