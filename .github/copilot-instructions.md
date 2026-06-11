@@ -8,12 +8,12 @@ messdienst24.de utility-consumption data as MCP tools.
 
 ## Language & runtime
 
-- Python 3.13+ only; use 3.13-compatible syntax
+- Python 3.12+; use syntax compatible with Python 3.12 and above
 - All files start with `from __future__ import annotations`
 
 ## Code style
 
-- Formatter/linter: **ruff** (`line-length = 100`, target `py313`)
+- Formatter/linter: **ruff** (`line-length = 100`, target `py312`)
 - Active ruff rules: `E, F, I, N, W, UP, ANN, S, B, C4, PIE, RET, SIM` — all annotations required (`ANN`)
 - Type checker: **pyright strict** — every function must be fully annotated; no `Any` unless unavoidable
 - Private module files are prefixed with `_` (e.g. `_cache.py`, `_config.py`)
@@ -22,7 +22,7 @@ messdienst24.de utility-consumption data as MCP tools.
 ## MCP server
 
 - MCP framework: **FastMCP** (`from mcp.server.fastmcp import FastMCP`)
-- The server instance and all tools live in `server.py`
+- The server instance, all tools, and all resources live in `server.py`
 - Config and caches are initialised **lazily** on the first tool call — never at import time
 - Each tool call creates a fresh `Md24deClient`, performs the minimum required requests, then closes the connection
 - Results are cached in memory via `Cache[T]` from `_cache.py`
