@@ -21,7 +21,9 @@ from pytest_mock import MockerFixture
 import md24de_mcp.server as server_module
 from md24de_mcp._config import Config
 from md24de_mcp.server import (
+    LATEST_REPORT_PDF_URI,
     _apply_log_level,
+    _get_latest_report_pdf,
     _handle_completion,
     _handle_set_logging_level,
     _serialize_meter,
@@ -30,6 +32,7 @@ from md24de_mcp.server import (
     _serialize_report,
     get_consumption_report,
     get_last_available_month,
+    mcp,
     save_pdf,
 )
 
@@ -341,3 +344,87 @@ def test_handle_completion_returns_none_for_resource_ref() -> None:
     context = mcp_types.CompletionContext(arguments={"key": "value"})
     result = asyncio.run(_handle_completion(ref, argument, context))
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# latest-report/pdf resource
+# ---------------------------------------------------------------------------
+
+
+def test_resource_always_listed() -> None:
+    """The PDF resource must appear in resources/list regardless of cache state."""
+    resources = asyncio.run(mcp.list_resources())
+    uris = [str(r.uri) for r in resources]
+    assert LATEST_REPORT_PDF_URI in uris
+
+
+def test_resource_listed_has_correct_metadata() -> None:
+    resources = asyncio.run(mcp.list_resources())
+    resource = next(r for r in resources if str(r.uri) == LATEST_REPORT_PDF_URI)
+    assert resource.mimeType == "application/pdf"
+    assert resource.name == "latest-report-pdf"
+
+
+def test_get_latest_report_pdf_cache_miss(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    result = _get_latest_report_pdf()
+    assert result == _PDF_BYTES
+    mock_client.get_pdf.assert_called_once()
+    mock_client.get_last_available_month.assert_called_once()
+
+
+def test_get_latest_report_pdf_cache_hit(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    _get_latest_report_pdf()
+    result = _get_latest_report_pdf()
+    assert result == _PDF_BYTES
+    mock_client.get_pdf.assert_called_once()  # only fetched once
+
+
+def test_get_latest_report_pdf_also_caches_month(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    _get_latest_report_pdf()
+    # Month should now be cached — get_last_available_month must not hit the portal again
+    get_last_available_month()
+    mock_client.get_last_available_month.assert_called_once()
+
+
+def test_get_latest_report_pdf_uses_cached_month(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    # Only month cached (no pdf) — must still fetch PDF but not month again
+    get_last_available_month()
+    mock_client.reset_mock()
+    _get_latest_report_pdf()
+    mock_client.get_pdf.assert_called_once()
+    mock_client.get_last_available_month.assert_not_called()
+
+
+def test_resource_and_save_pdf_share_cache(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    """Reading the resource then calling save_pdf must not re-fetch the PDF."""
+    _get_latest_report_pdf()
+    with tempfile.TemporaryDirectory() as tmp:
+        save_pdf(directory=tmp)
+    mock_client.get_pdf.assert_called_once()
+
+
+def test_save_pdf_and_resource_share_cache(
+    mock_config: Config,
+    mock_client: MagicMock,
+) -> None:
+    """Calling save_pdf then reading the resource must not re-fetch the PDF."""
+    with tempfile.TemporaryDirectory() as tmp:
+        save_pdf(directory=tmp)
+    result = _get_latest_report_pdf()
+    assert result == _PDF_BYTES
+    mock_client.get_pdf.assert_called_once()
