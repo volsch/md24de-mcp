@@ -19,6 +19,9 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
+          allow-dependencies-licenses: >-
+            pkg:githubactions/SonarSource/sonarqube-scan-action,
+            pkg:githubactions/SonarSource/sonarcloud-github-action
           deny-licenses: >-
             GPL-2.0,
             GPL-2.0-only,

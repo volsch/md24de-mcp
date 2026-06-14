@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
 from md24de import (
     AvailableMonth,
@@ -18,6 +19,24 @@ from ._cache import Cache
 from ._config import Config
 
 _log = logging.getLogger(__name__)
+
+# URI of the latest-report PDF resource — single source of truth used in both
+# the resource registration and the test suite.
+LATEST_REPORT_PDF_URI = "md24de://latest-report/pdf"
+
+# Maps MCP LoggingLevel strings to Python logging level integers.
+# "notice", "alert", "emergency" have no direct Python equivalent and are
+# mapped to the nearest standard level.
+_MCP_TO_PY_LOG_LEVEL: dict[mcp_types.LoggingLevel, int] = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "notice": logging.INFO,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+    "critical": logging.CRITICAL,
+    "alert": logging.CRITICAL,
+    "emergency": logging.CRITICAL,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +90,19 @@ def _make_client() -> Md24deClient:
     )
 
 
+def _apply_log_level(py_level: int) -> None:
+    """Apply *py_level* to the ``md24de_mcp``, ``md24de``, and ``httpx`` loggers.
+
+    Mirrors the level-application logic in :func:`md24de_mcp.main` so that a
+    ``logging/setLevel`` request received at runtime has the same effect as
+    starting the server with the corresponding ``LOG_LEVEL`` env var.
+    """
+    logging.getLogger("md24de_mcp").setLevel(py_level)
+    logging.getLogger("md24de").setLevel(py_level)
+    httpx_level = logging.WARNING if py_level > logging.DEBUG else py_level
+    logging.getLogger("httpx").setLevel(httpx_level)
+
+
 def _serialize_object_info(info: ObjectInfo) -> dict[str, str]:
     return {"object_number": info.object_number, "address": info.address}
 
@@ -110,6 +142,80 @@ def _serialize_report(month: AvailableMonth, report: ConsumptionReport) -> dict[
 
 
 # ---------------------------------------------------------------------------
+# MCP protocol handlers
+# ---------------------------------------------------------------------------
+# ping, resources/list, resources/read → handled automatically by FastMCP.
+# Unknown methods → low-level server returns -32601 automatically.
+# logging/setLevel and completion/complete require explicit registration below.
+
+
+async def _handle_set_logging_level(level: mcp_types.LoggingLevel) -> None:
+    py_level = _MCP_TO_PY_LOG_LEVEL.get(level, logging.WARNING)
+    _log.debug("logging/setLevel: %s -> Python level %d", level, py_level)
+    _apply_log_level(py_level)
+
+
+async def _handle_completion(
+    ref: mcp_types.PromptReference | mcp_types.ResourceTemplateReference,
+    argument: mcp_types.CompletionArgument,
+    context: mcp_types.CompletionContext | None,
+) -> mcp_types.Completion | None:
+    # This server exposes no prompts or resource templates, so there are
+    # no completions to provide.  Returning None causes the framework to
+    # respond with an empty completion list.
+    return None
+
+
+# Register handlers with the MCP framework.  Explicit call form (vs. @decorator
+# syntax) keeps pyright happy because the functions are referenced as arguments.
+mcp._mcp_server.set_logging_level()(_handle_set_logging_level)  # type: ignore[reportPrivateUsage]
+mcp.completion()(_handle_completion)
+
+
+# ---------------------------------------------------------------------------
+# MCP resources
+# ---------------------------------------------------------------------------
+
+
+def _get_latest_report_pdf() -> bytes:
+    caches = _get_caches()
+    cached_pdf = caches.pdf.get()
+    cached_month = caches.month.get()
+
+    if cached_pdf is not None and cached_month is not None:
+        _log.debug(
+            "Resource: returning cached PDF for %04d-%02d",
+            cached_month.year,
+            cached_month.month,
+        )
+        return cached_pdf
+
+    _log.debug("Resource: fetching PDF from portal")
+    with _make_client() as client:
+        if cached_month is None:
+            month = client.get_last_available_month()
+            caches.month.set(month)
+        pdf_bytes = client.get_pdf()
+
+    caches.pdf.set(pdf_bytes)
+    _log.debug("Resource: PDF fetched: %d bytes", len(pdf_bytes))
+    return pdf_bytes
+
+
+mcp.resource(
+    LATEST_REPORT_PDF_URI,
+    name="latest-report-pdf",
+    description=(
+        "The legally mandated *unterjährige Verbrauchsinformation* (UVI) for the most recently "
+        "published month as a PDF document.  Use this resource when you need the actual PDF "
+        "content — to display, summarise, or forward it.  Use the save_pdf tool instead when "
+        "the user explicitly wants the file written to a local directory on disk."
+    ),
+    mime_type="application/pdf",
+)(_get_latest_report_pdf)
+
+
+# ---------------------------------------------------------------------------
 # MCP tools
 # ---------------------------------------------------------------------------
 
@@ -125,8 +231,8 @@ def get_last_available_month() -> dict[str, int]:
     covers.
 
     Call this tool when you only need to know the current reporting month without fetching
-    the full report. The full report (get_consumption_report) and the PDF (save_pdf) both
-    include this information as well.
+    the full report. The full report (get_consumption_report), the PDF resource
+    (md24de://latest-report/pdf), and the save_pdf tool all include this information as well.
 
     Returns:
         year:  Four-digit year of the current reporting month (e.g. 2025).
@@ -207,8 +313,9 @@ def save_pdf(directory: str = "~/Downloads") -> dict[str, object]:
     to provide to tenants under §6a HeizkostenV. The document is generated by the
     messdienst24.de portal and covers the same month returned by get_last_available_month.
 
-    Use this tool when the user wants to save, view, or forward the actual PDF document
-    rather than just reading the structured consumption figures.
+    Use this tool when the user explicitly wants the PDF saved to a local directory on disk.
+    To read or forward the PDF content directly, use the resource md24de://latest-report/pdf
+    instead.
 
     Args:
         directory: Directory where the PDF will be saved. Defaults to ~/Downloads.

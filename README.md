@@ -1,7 +1,7 @@
 # md24de-mcp
 
 [![Latest release](https://img.shields.io/github/v/release/volsch/md24de-mcp?label=latest)](https://github.com/volsch/md24de-mcp/releases/latest)
-[![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue)](https://www.python.org/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=alert_status)](https://sonarcloud.io/summary/overall?id=volsch_md24de-mcp)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=volsch_md24de-mcp&metric=coverage)](https://sonarcloud.io/summary/overall?id=volsch_md24de-mcp)
@@ -17,13 +17,19 @@ hot-water consumption data as MCP tools that any MCP-compatible AI client can in
 
 ---
 
+## Resources
+
+| Resource URI | Description |
+|---|---|
+| `md24de://latest-report/pdf` | The monthly UVI PDF document (application/pdf) |
+
 ## Tools
 
 | Tool | Description |
 |---|---|
 | `get_last_available_month` | Returns the year/month for which the portal currently provides data |
 | `get_consumption_report` | Returns the full heating and hot-water consumption report |
-| `save_pdf` | Downloads the monthly consumption PDF and saves it to disk |
+| `save_pdf` | Saves the monthly consumption PDF to a local directory on disk |
 
 ### `get_last_available_month`
 
@@ -57,7 +63,7 @@ Comparison values are `"less"`, `"more"`, `"equal"`, or `null` when unavailable.
 
 ### `save_pdf`
 
-Saves the PDF to disk and returns:
+Saves the PDF to a local directory on disk and returns:
 
 ```json
 {
@@ -70,6 +76,9 @@ Saves the PDF to disk and returns:
 ```
 
 The optional `directory` parameter controls where the file is saved (default: `~/Downloads`).
+
+To read the PDF content directly without saving to disk, use the resource
+`md24de://latest-report/pdf` instead.
 
 ---
 
@@ -84,6 +93,7 @@ Once connected to Claude Desktop, you can ask:
 - *"Give me a summary of my energy consumption."*
 - *"Save my monthly consumption PDF to my Downloads folder."*
 - *"Save my monthly consumption PDF to my Desktop."*
+- *"Read my monthly UVI PDF document."*
 - *"Which month's data is currently available on messdienst24.de?"*
 
 ---
@@ -95,11 +105,15 @@ closes the connection. This avoids server-side session timeouts for long-running
 
 Results are cached in memory for a configurable TTL (default 30 minutes):
 
-| Tool | Caches |
+| Tool / Resource | Caches |
 |---|---|
 | `get_last_available_month` | available month |
 | `get_consumption_report` | available month + consumption report |
 | `save_pdf` | available month + PDF bytes |
+| `md24de://latest-report/pdf` | available month (if not already warm) + PDF bytes |
+
+The `save_pdf` tool and the `md24de://latest-report/pdf` resource share the same PDF cache.
+Reading one and then calling the other makes only one portal request.
 
 ---
 
@@ -186,7 +200,7 @@ The tenant ID is the `md=` value from your portal login URL (e.g. `https://messd
 
 **4. Verify the connection.**
 A 🔧 icon in the chat input bar confirms the server is connected.
-Click it to see the list of available tools (`get_last_available_month`, `get_consumption_report`, `save_pdf`).
+Click it to see the list of available tools (`get_last_available_month`, `get_consumption_report`, `save_pdf`) and the resource (`md24de://latest-report/pdf`).
 
 **5. Try an example prompt** (see [Example prompts](#example-prompts) above), e.g.:
 > *"How much heating energy did I use last month?"*
