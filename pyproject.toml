@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.0",
-    "python-md24de @ git+https://github.com/volsch/python-md24de.git@v0.2.0",
+    "python-md24de @ git+https://github.com/volsch/python-md24de.git@v0.3.0",
 ]
 
 [project.optional-dependencies]
