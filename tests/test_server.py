@@ -75,21 +75,21 @@ def mock_client(
 
 
 def test_serialize_object_info() -> None:
-    info = ObjectInfo(object_number="OBJ-001", address="Main St 1")
+    info = ObjectInfo(object_number="OBJ-001", address="Musterstraße 1")
     result = _serialize_object_info(info)
-    assert result == {"object_number": "OBJ-001", "address": "Main St 1"}
+    assert result == {"object_number": "OBJ-001", "address": "Musterstraße 1"}
 
 
 def test_serialize_reading() -> None:
-    reading = MeterReading(year=2025, month=4, your_kwh=100.0, average_kwh=120.0)
+    reading = MeterReading(year=2025, month=4, your_kwh=333.3, average_kwh=444.4)
     result = _serialize_reading(reading)
-    assert result == {"year": 2025, "month": 4, "your_kwh": 100.0, "average_kwh": 120.0}
+    assert result == {"year": 2025, "month": 4, "your_kwh": 333.3, "average_kwh": 444.4}
 
 
 def test_serialize_meter_with_comparisons(meter_report: MeterReport) -> None:
     result = _serialize_meter(meter_report)
-    assert result["your_kwh"] == 123.4
-    assert result["average_kwh"] == 150.0
+    assert result["your_kwh"] == 111.1
+    assert result["average_kwh"] == 222.2
     assert result["vs_average"] == "less"
     assert result["vs_previous_month"] == "more"
     assert result["vs_previous_year"] is None
@@ -98,8 +98,8 @@ def test_serialize_meter_with_comparisons(meter_report: MeterReport) -> None:
 
 def test_serialize_meter_equal_comparison(meter_reading: MeterReading) -> None:
     report = MeterReport(
-        current_kwh=60.0,
-        average_kwh=60.0,
+        current_kwh=555.5,
+        average_kwh=555.5,
         vs_average=Comparison.EQUAL,
         vs_previous_month=None,
         vs_previous_year=None,
@@ -112,8 +112,8 @@ def test_serialize_meter_equal_comparison(meter_reading: MeterReading) -> None:
 
 def test_serialize_meter_all_null_comparisons(meter_reading: MeterReading) -> None:
     report = MeterReport(
-        current_kwh=50.0,
-        average_kwh=60.0,
+        current_kwh=666.6,
+        average_kwh=777.7,
         vs_average=None,
         vs_previous_month=None,
         vs_previous_year=None,

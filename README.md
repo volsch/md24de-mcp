@@ -45,14 +45,14 @@ Returns structured consumption data with the following shape:
   "month": 4,
   "object_info": { "object_number": "…", "address": "…" },
   "heating": {
-    "your_kwh": 123.4,
-    "average_kwh": 150.0,
+    "your_kwh": 111.1,
+    "average_kwh": 222.2,
     "vs_average": "less",
     "vs_previous_month": "more",
     "vs_previous_year": null,
     "history": [
-      { "year": 2025, "month": 4, "your_kwh": 123.4, "average_kwh": 150.0 },
-      { "year": 2025, "month": 3, "your_kwh": 140.0, "average_kwh": 160.0 }
+      { "year": 2025, "month": 4, "your_kwh": 111.1, "average_kwh": 222.2 },
+      { "year": 2025, "month": 3, "your_kwh": 333.3, "average_kwh": 444.4 }
     ]
   },
   "hot_water": { "…": "…" }
