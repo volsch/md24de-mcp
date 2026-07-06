@@ -63,7 +63,7 @@ Comparison values are `"less"`, `"more"`, `"equal"`, or `null` when unavailable.
 
 ### `save_pdf`
 
-Saves the PDF to a local directory on disk and returns:
+Renders the PDF locally and saves it to a local directory on disk, returning:
 
 ```json
 {
@@ -79,6 +79,11 @@ The optional `directory` parameter controls where the file is saved (default: `~
 
 To read the PDF content directly without saving to disk, use the resource
 `md24de://latest-report/pdf` instead.
+
+> **Note:** The messdienst24.de portal no longer offers a downloadable PDF, so both the
+> `save_pdf` tool and the `md24de://latest-report/pdf` resource render the UVI document
+> locally via python-md24de (`reportlab`/`Pillow`, pulled in through its `[pdf]` extra —
+> already a required dependency of this server, no extra setup needed).
 
 ---
 

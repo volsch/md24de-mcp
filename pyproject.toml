@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "md24de-mcp"
-version = "0.3.0"
+version = "0.4.0"
 description = "Unofficial MCP server for the messdienst24.de utility portal via python-md24de"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "mcp>=1.0",
-    "python-md24de @ git+https://github.com/volsch/python-md24de.git@v0.3.0",
+    "python-md24de[pdf] @ git+https://github.com/volsch/python-md24de.git@v0.10.0",
 ]
 
 [project.optional-dependencies]

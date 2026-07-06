@@ -10,6 +10,7 @@ import mcp.types as mcp_types
 import pytest
 from md24de import (
     AvailableMonth,
+    ClientOptions,
     Comparison,
     ConsumptionReport,
     MeterReading,
@@ -173,7 +174,7 @@ def test_get_last_available_month_uses_config_credentials(
     client_cls = mocker.patch("md24de_mcp.server.Md24deClient", return_value=mock_client)
     get_last_available_month()
     client_cls.assert_called_once_with(
-        tenant="xy", username="user", password="pass", timeout=10.0
+        tenant="xy", username="user", password="pass", options=ClientOptions(timeout=10.0)
     )
 
 
