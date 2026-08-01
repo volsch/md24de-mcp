@@ -21,7 +21,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "mcp>=1.0",
+    "mcp>=1.0,<2.0",
     "python-md24de[pdf] @ git+https://github.com/volsch/python-md24de.git@v0.10.0",
 ]
 
@@ -33,7 +33,7 @@ dev = [
     "pyright>=1.1",
     "ruff>=0.9",
     "pip-licenses>=5.0",
-    "mcp[cli]>=1.0",
+    "mcp[cli]>=1.0,<2.0",
 ]
 
 [project.scripts]
