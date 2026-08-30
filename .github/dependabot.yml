@@ -15,6 +15,11 @@ updates:
           - "pyright"
           - "ruff"
           - "types-*"
+    ignore:
+      # mcp 2.x renamed FastMCP to MCPServer and changed other APIs;
+      # avoid automatic major-version bumps until the code is migrated.
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
