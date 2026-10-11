@@ -16,10 +16,12 @@ updates:
           - "ruff"
           - "types-*"
     ignore:
-      # mcp 2.x renamed FastMCP to MCPServer and changed other APIs;
-      # avoid automatic major-version bumps until the code is migrated.
+      # mcp 2.x renamed FastMCP to MCPServer and changed other APIs.
+      # "update-types: semver-major" alone does not block range-widening
+      # updates (e.g. "<2.0" -> "<3.0"), so pin the version explicitly too.
       - dependency-name: "mcp"
         update-types: ["version-update:semver-major"]
+        versions: [">=2.0"]
 
   - package-ecosystem: github-actions
     directory: /
