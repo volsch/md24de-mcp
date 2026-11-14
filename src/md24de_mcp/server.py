@@ -151,6 +151,8 @@ def _serialize_report(month: AvailableMonth, report: ConsumptionReport) -> dict[
 
 
 async def _handle_set_logging_level(level: mcp_types.LoggingLevel) -> None:
+    # `async` is required here: the MCP framework declares this callback as
+    # `Callable[[LoggingLevel], Awaitable[None]]` and awaits it directly.
     py_level = _MCP_TO_PY_LOG_LEVEL.get(level, logging.WARNING)
     _log.debug("logging/setLevel: %s -> Python level %d", level, py_level)
     _apply_log_level(py_level)
@@ -161,6 +163,8 @@ async def _handle_completion(
     argument: mcp_types.CompletionArgument,
     context: mcp_types.CompletionContext | None,
 ) -> mcp_types.Completion | None:
+    # `async` is required here: the MCP framework declares this callback as
+    # returning `Awaitable[Completion | None]` and awaits it directly.
     # This server exposes no prompts or resource templates, so there are
     # no completions to provide.  Returning None causes the framework to
     # respond with an empty completion list.
